@@ -13,8 +13,8 @@ const {
   EmbedBuilder,
 } = require('discord.js');
 const { token } = require('./config.json');
-const recruitTagId = '1335648890493468827';
-const endTagId = '1335648507368964227';
+const recruitTagId = '1333363041370116136';
+const endTagId = '1333363313010278421';
 
 // 2. 클라이언트 객체 생성 (Guilds관련, 메시지관련 인텐트 추가)
 const client = new Client({
