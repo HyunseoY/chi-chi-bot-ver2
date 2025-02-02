@@ -10,9 +10,11 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  EmbedBuilder,
 } = require('discord.js');
 const { token } = require('./config.json');
-const { EmbedBuilder } = require('@discordjs/builders');
+const recruitTagId = '1335648890493468827';
+const endTagId = '1335648507368964227';
 
 // 2. 클라이언트 객체 생성 (Guilds관련, 메시지관련 인텐트 추가)
 const client = new Client({
@@ -173,7 +175,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         name: `${schedule}︱${title}`,
         autoArchiveDuration: 60,
         reason: '일정 생성',
-        appliedTags: ['1333363041370116136'], // 모집중 태그 ID 추가
+        appliedTags: [recruitTagId], // 모집중 태그 ID 추가
         message: {
           embeds: [
             {
@@ -251,7 +253,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       await interaction.reply({ content: '일정이 생성되었습니다!', flags: 64 });
     } catch (error) {
-      console.error('Error creating thread or sending message:', error);
       if (!interaction.replied) {
         await interaction.reply({
           content: '메시지 전송 중 오류가 발생했습니다. 다시 시도해 주세요',
@@ -422,17 +423,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const thread = message.channel; // 현재 메시지가 있는 채널(스레드)을 가져옴
       const authorId = customId.split('_')[2]; // 커스텀 ID에서 작성자 ID 추출
 
+      const embed1 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('정말로 스레드를 삭제하시겠어요?');
+
+      const embed2 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('글삭제를 취소하셨습니다.');
+
+      const embed3 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('작성자만 삭제할 수 있습니다.');
+
       // 작성자 ID와 현재 사용자 ID 비교
       if (interaction.user.id !== authorId) {
         // 작성자가 아닐 경우 '작성자만 삭제할 수 있습니다.' 메시지 전송
         await interaction.reply({
-          content: '작성자만 삭제할 수 있습니다.',
+          embeds: [embed3],
           flags: 64, // 메시지를 개인적으로 보이게 설정
         });
       } else {
         // 작성자일 경우 확인 메시지 전송
         const reply = await interaction.reply({
-          content: '정말로 스레드를 삭제하시겠어요?',
+          embeds: [embed1],
           components: [
             {
               type: 1, // ActionRow
@@ -476,7 +489,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           } else if (i.customId === 'cancel_delete') {
             // 취소 버튼 클릭 시 확인 메시지 수정
             await interaction.editReply({
-              content: '삭제가 취소되었습니다.', // 취소 메시지로 변경
+              embeds: [embed2], // 취소 메시지로 변경
               components: [],
             }); // 메시지 수정
           }
@@ -493,18 +506,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const thread = interaction.channel; // 현재 채널(스레드)을 가져옴
       const authorId = interaction.customId.split('_')[2]; // 커스텀 ID에서 작성자 ID 추출
 
+      // 임베드 메시지 생성
+      const embed1 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setTitle('정말로 스레드를 마감하시겠어요?')
+        .setDescription(
+          '마감 후에는 되돌릴 수 없습니다. 신중하게 선택해주세요.'
+        );
+
+      const embed2 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('포스트가 마감되었습니다.');
+
+      const embed3 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('글마감을 취소하셨습니다.');
+
+      const embed4 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription(
+          '태그 변경 중 오류가 발생했습니다. 다시 시도해 주세요.'
+        );
+
+      const embed5 = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('작성자만 마감 할 수 있습니다.');
+
       // 작성자 ID와 현재 사용자 ID 비교
       if (interaction.user.id !== authorId) {
         // 작성자가 아닐 경우 '작성자만 마감할 수 있습니다.' 메시지 전송
         await interaction.reply({
-          content: '작성자만 마감할 수 있습니다.',
+          embeds: [embed5],
           flags: 64, // 메시지를 개인적으로 보이게 설정
         });
       } else {
         // 작성자일 경우 확인 메시지 전송
         const reply = await interaction.reply({
-          content:
-            '정말로 스레드를 마감하시겠어요? 마감 후에는 되돌릴 수 없습니다.',
+          embeds: [embed1],
           components: [
             {
               type: 1, // ActionRow
@@ -544,25 +582,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
           if (i.customId === 'confirm_end') {
             // 태그를 '마감'으로 변경
             try {
-              await thread.setAppliedTags(['1333363313010278421']); // 마감 태그 ID로 변경
+              await thread.setAppliedTags([endTagId]); // 마감 태그 ID로 변경
               await thread.setLocked(true); // 스레드 잠그기
-              await thread.setArchived(true); // 스레드 닫기
+              await thread.send({ embeds: [embed2] }); // 모든 사용자가 볼 수 있는 메시지 전송
               await interaction.editReply({
-                content: '포스트가 마감되었습니다.',
+                embeds: [embed2], // 사용자에게 보여줄 메시지 수정
                 components: [],
               }); // 메시지 수정
+              await thread.setArchived(true); // 스레드 닫기
             } catch (error) {
-              console.error('Error updating thread tags:', error);
               await interaction.editReply({
-                content:
-                  '태그 변경 중 오류가 발생했습니다. 다시 시도해 주세요.',
+                embeds: [embed4],
                 components: [],
               }); // 메시지 수정
             }
           } else if (i.customId === 'cancel_end') {
             // 취소 버튼 클릭 시 확인 메시지 수정
             await interaction.editReply({
-              content: '마감이 취소되었습니다.', // 취소 메시지로 변경
+              embeds: [embed3], // 취소 메시지로 변경
               components: [],
             }); // 메시지 수정
           }
@@ -597,8 +634,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setStyle(ButtonStyle.Secondary)
     );
 
+    // 임베드 메시지 생성
+    const embed = new EmbedBuilder()
+      .setColor('#0099ff') // 색상 설정
+      .setDescription('포지션을 선택하세요');
+
     await interaction.reply({
-      content: '포지션을 선택하세요:',
+      embeds: [embed], // embeds 속성으로 설정
       components: [positionEmbed],
       flags: 64,
     });
@@ -656,6 +698,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       let totalParticipants = 0; // 총 참여 인원 수 초기화
       let isCancellation = interaction.customId === 'cancel_button'; // 참여 취소 버튼인지 확인
 
+      // 임베드 메시지 생성
+      const embedCancel = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('참여를 취소하셨습니다.');
+      const embedChange = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('포지션 변경을 원하시면 참여취소 후 재신청해주세요');
+      const embedIn = new EmbedBuilder()
+        .setColor('#0099ff') // 색상 설정
+        .setDescription('참여 신청이 완료되었습니다!');
+
       for (const field of embed.fields) {
         const match = field.name.match(/\*\*(.*?)\((\d+)\)\*\*/);
         if (!match) {
@@ -677,7 +730,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             // 참여 취소 메시지 전송
             if (!interaction.replied) {
               await interaction.reply({
-                content: '참여가 취소되었습니다.',
+                embeds: [embedCancel],
                 flags: 64, // ephemeral 플래그 대신 사용
               });
             }
@@ -701,7 +754,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (alreadyParticipated && !isCancellation) {
           if (!interaction.replied) {
             await interaction.reply({
-              content: '포지션 변경을 원하시면 참여여취소 후 재신청해주세요',
+              embeds: [embedChange],
               flags: 64,
             });
           }
@@ -783,12 +836,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // 응답이 이미 보내졌는지 확인
       if (!interaction.replied) {
         await interaction.reply({
-          content: '참여 신청이 완료되었습니다!',
+          embeds: [embedIn],
           flags: 64,
         });
       } else {
         await interaction.followUp({
-          content: '참여 신청이 완료되었습니다!',
+          embeds: [embedIn],
           flags: 64,
         });
       }
