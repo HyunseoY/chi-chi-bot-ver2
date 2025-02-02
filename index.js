@@ -165,6 +165,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
 
+      const authorNickname =
+        interaction.member.nickname || interaction.user.username; // 서버별명이 없으면 기본 사용자 이름 사용
+
       // 포럼에 새 포스트 생성 및 메시지 전송
       const thread = await channel.threads.create({
         name: `${schedule}︱${title}`,
@@ -196,7 +199,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
               ],
               color: 0x0099ff,
               author: {
-                name: interaction.user.username,
+                name: authorNickname,
                 icon_url: interaction.user.displayAvatarURL(),
               },
             },
@@ -236,7 +239,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
               new ButtonBuilder()
                 .setCustomId(`delete_button_${authorId}`)
                 .setLabel('글삭제')
-                .setStyle(ButtonStyle.Danger)
+                .setStyle(ButtonStyle.Danger),
+              new ButtonBuilder()
+                .setCustomId(`end_button_${authorId}`)
+                .setLabel('글마감')
+                .setStyle(ButtonStyle.Secondary)
             ),
           ],
         },
@@ -470,6 +477,92 @@ client.on(Events.InteractionCreate, async (interaction) => {
             // 취소 버튼 클릭 시 확인 메시지 수정
             await interaction.editReply({
               content: '삭제가 취소되었습니다.', // 취소 메시지로 변경
+              components: [],
+            }); // 메시지 수정
+          }
+          collector.stop(); // 수집기 중지
+        });
+      }
+    }
+
+    // 글마감 버튼 클릭 처리
+    if (
+      interaction.isButton() &&
+      interaction.customId.startsWith('end_button_')
+    ) {
+      const thread = interaction.channel; // 현재 채널(스레드)을 가져옴
+      const authorId = interaction.customId.split('_')[2]; // 커스텀 ID에서 작성자 ID 추출
+
+      // 작성자 ID와 현재 사용자 ID 비교
+      if (interaction.user.id !== authorId) {
+        // 작성자가 아닐 경우 '작성자만 마감할 수 있습니다.' 메시지 전송
+        await interaction.reply({
+          content: '작성자만 마감할 수 있습니다.',
+          flags: 64, // 메시지를 개인적으로 보이게 설정
+        });
+      } else {
+        // 작성자일 경우 확인 메시지 전송
+        const reply = await interaction.reply({
+          content:
+            '정말로 스레드를 마감하시겠어요? 마감 후에는 되돌릴 수 없습니다.',
+          components: [
+            {
+              type: 1, // ActionRow
+              components: [
+                {
+                  type: 2, // Button
+                  label: '확인',
+                  style: 4, // Danger
+                  customId: 'confirm_end',
+                },
+                {
+                  type: 2, // Button
+                  label: '취소',
+                  style: 2, // Secondary
+                  customId: 'cancel_end',
+                },
+              ],
+            },
+          ],
+          withResponse: true, // 메시지를 가져오기 위해 true로 설정
+          flags: 64, // flags: 64를 flags로 변경
+        });
+
+        // 확인 버튼 클릭 처리
+        const filter = (i) => {
+          return i.customId === 'confirm_end' || i.customId === 'cancel_end';
+        };
+
+        const collector = thread.createMessageComponentCollector({
+          filter,
+          time: 15000,
+        });
+
+        collector.on('collect', async (i) => {
+          await i.deferUpdate(); // 상호작용 응답을 지연시킴
+
+          if (i.customId === 'confirm_end') {
+            // 태그를 '마감'으로 변경
+            try {
+              await thread.setAppliedTags(['1333363313010278421']); // 마감 태그 ID로 변경
+              await thread.setLocked(true); // 스레드 잠그기
+              await thread.setArchived(true); // 스레드 닫기
+              await interaction.editReply({
+                content: '포스트가 마감되었습니다.',
+                components: [],
+              }); // 메시지 수정
+            } catch (error) {
+              console.error('Error updating thread tags:', error);
+              await interaction.editReply({
+                content:
+                  '태그 변경 중 오류가 발생했습니다. 다시 시도해 주세요.',
+                components: [],
+              }); // 메시지 수정
+            }
+          } else if (i.customId === 'cancel_end') {
+            // 취소 버튼 클릭 시 확인 메시지 수정
+            await interaction.editReply({
+              content: '마감이 취소되었습니다.', // 취소 메시지로 변경
               components: [],
             }); // 메시지 수정
           }
