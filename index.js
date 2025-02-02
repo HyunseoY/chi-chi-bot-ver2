@@ -59,7 +59,7 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 
-// 5. 버튼 클릭 이벤트 처리
+// 5. 일정생성 버튼 클릭 이벤트 처리
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
 
@@ -113,7 +113,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     .setCustomId('detail_input')
     .setLabel('설명')
     .setStyle(TextInputStyle.Paragraph)
-    .setRequired(false)
+    .setRequired(true)
     .setPlaceholder('추가적인 설명을 입력하세요')
     .setMaxLength(500);
 
@@ -198,7 +198,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
               author: {
                 name: interaction.user.username,
                 icon_url: interaction.user.displayAvatarURL(),
-                id: authorId, // 작성자 ID 추가
               },
             },
             {
@@ -230,12 +229,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 .setCustomId('join_button')
                 .setLabel('참여신청')
                 .setStyle(ButtonStyle.Primary),
-              new ButtonBuilder()
-                .setCustomId('edit_button')
+              /*new ButtonBuilder()
+                .setCustomId(`edit_button_${authorId}`)
                 .setLabel('글수정')
-                .setStyle(ButtonStyle.Success),
+                .setStyle(ButtonStyle.Success),*/
               new ButtonBuilder()
-                .setCustomId('delete_button')
+                .setCustomId(`delete_button_${authorId}`)
                 .setLabel('글삭제')
                 .setStyle(ButtonStyle.Danger)
             ),
@@ -259,167 +258,173 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isButton()) {
     const { customId, message } = interaction;
 
-    // 글 수정 버튼 클릭 처리
-    if (customId === 'edit_button') {
-      const messageId = message.id; // 메시지 ID를 가져옴
+    /*// 글수정 버튼 클릭 처리
+    if (interaction.customId.startsWith('edit_button_')) {
+      // 기존 값들
+      const existingTitle = message.embeds[0]?.title || ''; // 기존 일정 제목
+      const existingSchedule = message.embeds[0].fields[0]?.value || ''; // 기존 일시
+      const existingJob = message.embeds[0].fields[1]?.value || ''; // 기존 구인 직업 및 인원
+      const existingRequirement = message.embeds[0]?.fields[2]?.value || ''; // 기존 요구 조건
+      const existingDetail = message.embeds[0].fields[3]?.value || ''; // 기존 설명
 
+      // 모달 생성
       const modal = new ModalBuilder()
-        .setCustomId(`edit_modal_${messageId}`)
-        .setTitle('글수정');
-
-      const titleInput = new TextInputBuilder()
-        .setCustomId('title_input')
-        .setLabel('일정제목')
-        .setValue(message.embeds[0].title) // 기존 제목
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setPlaceholder('생성하려는 일정의 제목을 입력해주세요')
-        .setMaxLength(50);
-
-      const scheduleInput = new TextInputBuilder()
-        .setCustomId('schedule_input')
-        .setLabel('일시')
-        .setValue(message.embeds[0].fields[0]?.value || '') // 기존 일정
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setPlaceholder('작성양식: 0월 0일 0요일 17시 (24시간제로 표시)')
-        .setMaxLength(50);
-
-      const jobInput = new TextInputBuilder()
-        .setCustomId('job_input')
-        .setLabel('구인직업 및 인원')
-        .setValue(message.embeds[0].fields[1]?.value || '') // 기존 직무
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true)
-        .setPlaceholder('예: 탱 2, 힐 4, 딜 14')
-        .setMaxLength(50);
-
-      const requirementInput = new TextInputBuilder()
-        .setCustomId('requirement_input')
-        .setLabel('요구조건')
-        .setValue(message.embeds[0].fields[2]?.value || '') // 기존 요구 사항
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true)
-        .setPlaceholder('예: 600+ 아이템 레벨')
-        .setMaxLength(50);
-
-      const detailInput = new TextInputBuilder()
-        .setCustomId('detail_input')
-        .setLabel('설명')
-        .setValue(message.embeds[0].fields[3]?.value || '') // 기존 설명
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(false)
-        .setPlaceholder('추가적인 설명을 입력하세요')
-        .setMaxLength(500);
+        .setCustomId('edit_schedule_modal')
+        .setTitle('일정 수정');
 
       modal.addComponents(
-        new ActionRowBuilder().addComponents(titleInput),
-        new ActionRowBuilder().addComponents(scheduleInput),
-        new ActionRowBuilder().addComponents(jobInput),
-        new ActionRowBuilder().addComponents(requirementInput),
-        new ActionRowBuilder().addComponents(detailInput)
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('title_input')
+            .setLabel('일정제목')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('생성하려는 일정의 제목을 입력해주세요')
+            .setMaxLength(50)
+            .setValue(existingTitle) // 기존 제목 설정
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('schedule_input')
+            .setLabel('일시')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('작성양식: 0월 0일 0요일 17시 (24시간제로 표시)')
+            .setMaxLength(50)
+            .setValue(existingSchedule) // 기존 일시 설정
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('job_input')
+            .setLabel('구인직업 및 인원')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(true)
+            .setPlaceholder('예: 탱 2, 힐 4, 딜 14')
+            .setMaxLength(50)
+            .setValue(existingJob) // 기존 구인 직업 및 인원 설정
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('requirement_input')
+            .setLabel('요구조건')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(true)
+            .setPlaceholder('예: 600+ 아이템 레벨')
+            .setMaxLength(50)
+            .setValue(existingRequirement) // 기존 요구 조건 설정
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('detail_input')
+            .setLabel('설명')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(false)
+            .setPlaceholder('추가적인 설명을 입력하세요')
+            .setMaxLength(500)
+            .setValue(existingDetail) // 기존 설명 설정
+        )
       );
 
-      await interaction.showModal(modal);
-    }
-
-    // 모달 제출 처리 (글 수정)
-    if (
-      interaction.isModalSubmit() &&
-      interaction.customId.startsWith('edit_modal_')
-    ) {
-      const messageId = interaction.customId.split('_')[2]; // 수정할 메시지 ID를 customId에서 가져옴
-      const channel = interaction.channel;
-
       try {
-        const message = await channel.messages.fetch(messageId); // 메시지 가져오기
-        const embed = message.embeds[0];
-
-        if (!embed) {
-          await interaction.reply({
-            content: '수정할 임베드 메시지가 없습니다.',
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const newTitle = interaction.fields.getTextInputValue('title_input');
-        const newSchedule =
-          interaction.fields.getTextInputValue('schedule_input');
-        const newJob = interaction.fields.getTextInputValue('job_input');
-        const newRequirement =
-          interaction.fields.getTextInputValue('requirement_input');
-        const newDetail = interaction.fields.getTextInputValue('detail_input');
-
-        // 새로운 임베드 객체 생성
-        const updatedEmbed = new EmbedBuilder()
-          .setTitle(newTitle || embed.title) // 수정된 제목
-          .setDescription(embed.description)
-          .setColor(embed.color);
-
-        // 필드가 존재하는 경우에만 추가
-        if (embed.fields.length > 0) {
-          updatedEmbed.addFields(
-            {
-              name: `\`⏰일시\``,
-              value: newSchedule || embed.fields[0].value || '없음',
-            },
-            {
-              name: `\`🙋‍♂️구인직업 및 인원\``,
-              value: newJob || embed.fields[1]?.value || '없음',
-            },
-            {
-              name: `\`✅요구조건\``,
-              value: newRequirement || embed.fields[2]?.value || '없음',
-            },
-            {
-              name: `\`📝설명\``,
-              value: newDetail || embed.fields[3]?.value || '없음',
-            }
-          );
-        } else {
-          // 필드가 없을 경우 기본 필드 추가
-          updatedEmbed.addFields(
-            {
-              name: `\`⏰일시\``,
-              value: newSchedule || '없음',
-            },
-            {
-              name: `\`🙋‍♂️구인직업 및 인원\``,
-              value: newJob || '없음',
-            },
-            {
-              name: `\`✅요구조건\``,
-              value: newRequirement || '없음',
-            },
-            {
-              name: `\`📝설명\``,
-              value: newDetail || '없음',
-            }
-          );
-        }
-
-        await message.edit({ embeds: [updatedEmbed] }); // 수정된 임베드를 사용
-        await interaction.reply({
-          content: '글이 수정되었습니다.',
-          ephemeral: true,
-        });
+        await interaction.showModal(modal);
       } catch (error) {
-        console.error('모달 제출 처리 중 오류 발생:', error);
+        console.error('Error showing modal:', error);
         await interaction.reply({
-          content: `글 수정 중 오류가 발생했습니다: ${error.message}`,
-          ephemeral: true,
+          content: '모달을 표시하는 중 오류가 발생했습니다.',
+          flags: 64,
         });
       }
     }
 
-    // 글 삭제 버튼 클릭 처리
-    if (customId === 'delete_button') {
-      const thread = message.channel; // 현재 메시지가 있는 채널(스레드)을 가져옴
+    // 수정 후 모달 제출 처리
+    if (
+      interaction.isModalSubmit() &&
+      interaction.customId === 'edit_schedule_modal'
+    ) {
+      try {
+        const title = interaction.fields.getTextInputValue('title_input');
+        const schedule = interaction.fields.getTextInputValue('schedule_input');
+        const job = interaction.fields.getTextInputValue('job_input');
+        const requirement =
+          interaction.fields.getTextInputValue('requirement_input');
+        const detail = interaction.fields.getTextInputValue('detail_input');
 
-      if (thread.isThread()) {
-        // 확인 메시지 전송
-        const confirmationMessage = await interaction.reply({
+        // 임베드 수정
+        const embed = new EmbedBuilder()
+          .setTitle(title)
+          .setDescription(
+            `파티 참여를 원하신다면 참여신청 클릭 후 참여할 포지션의 버튼을 눌러주세요!`
+          )
+          .addFields(
+            { name: `\`⏰일시\``, value: schedule },
+            { name: `\`🙋‍♂️구인직업 및 인원\``, value: job },
+            { name: `\`✅요구조건\``, value: requirement },
+            { name: `\`📝설명\``, value: detail }
+          )
+          .setColor(0x0099ff)
+          .setAuthor({
+            name: interaction.user.username,
+            icon_url: interaction.user.displayAvatarURL(),
+          });
+
+        // 채널 및 스레드 가져오기
+        const channelId = '1334525752019914802'; // 채널 ID를 여기에 입력하세요
+        const channel = interaction.guild.channels.cache.get(channelId);
+        if (!channel) {
+          throw new Error('채널을 찾을 수 없습니다.');
+        }
+
+        let messageToEdit;
+
+        if (threadId) {
+          // 스레드가 있는 경우
+          const thread = await channel.threads.fetch(threadId);
+          if (!thread) {
+            throw new Error('스레드를 찾을 수 없습니다.');
+          }
+
+          messageToEdit = await thread.messages.fetch(message.id);
+        } else {
+          // 스레드가 없는 경우, 일반 채널에서 메시지를 수정
+          messageToEdit = await channel.messages.fetch(message.id);
+        }
+
+        if (!messageToEdit) {
+          throw new Error('메시지를 찾을 수 없습니다.');
+        }
+
+        await messageToEdit.edit({ embeds: [embed] });
+
+        await interaction.reply({
+          content: '일정이 수정되었습니다!',
+          flags: 64,
+        });
+      } catch (error) {
+        console.error('Error editing message:', error);
+        if (!interaction.replied) {
+          await interaction.reply({
+            content: '메시지 수정 중 오류가 발생했습니다. 다시 시도해 주세요',
+            flags: 64,
+          });
+        }
+      }
+    }*/
+
+    // 글 삭제 버튼 클릭 처리
+    if (customId.startsWith('delete_button_')) {
+      const thread = message.channel; // 현재 메시지가 있는 채널(스레드)을 가져옴
+      const authorId = customId.split('_')[2]; // 커스텀 ID에서 작성자 ID 추출
+
+      // 작성자 ID와 현재 사용자 ID 비교
+      if (interaction.user.id !== authorId) {
+        // 작성자가 아닐 경우 '작성자만 삭제할 수 있습니다.' 메시지 전송
+        await interaction.reply({
+          content: '작성자만 삭제할 수 있습니다.',
+          flags: 64, // 메시지를 개인적으로 보이게 설정
+        });
+      } else {
+        // 작성자일 경우 확인 메시지 전송
+        const reply = await interaction.reply({
           content: '정말로 스레드를 삭제하시겠어요?',
           components: [
             {
@@ -440,7 +445,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
               ],
             },
           ],
-          flags: 64, // 이 메시지는 해당 사용자만 볼 수 있음
+          withResponse: true, // 메시지를 가져오기 위해 true로 설정
+          flags: 64, // flags: 64를 flags로 변경
         });
 
         // 확인 버튼 클릭 처리
@@ -450,19 +456,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
           );
         };
 
-        const collector = interaction.channel.createMessageComponentCollector({
+        const collector = thread.createMessageComponentCollector({
           filter,
           time: 15000,
         });
 
         collector.on('collect', async (i) => {
+          await i.deferUpdate(); // 상호작용 응답을 지연시킴
+
           if (i.customId === 'confirm_delete') {
             await thread.delete(); // 스레드 삭제
           } else if (i.customId === 'cancel_delete') {
-            await i.reply({
-              content: '스레드 삭제가 취소되었습니다.',
-              flags: 64,
-            });
+            // 취소 버튼 클릭 시 확인 메시지 수정
+            await interaction.editReply({
+              content: '삭제가 취소되었습니다.', // 취소 메시지로 변경
+              components: [],
+            }); // 메시지 수정
           }
           collector.stop(); // 수집기 중지
         });
@@ -599,8 +608,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (alreadyParticipated && !isCancellation) {
           if (!interaction.replied) {
             await interaction.reply({
-              content:
-                '신청 완료! 포지션 변경을 원하시면 취소 후 재신청해주세요',
+              content: '포지션 변경을 원하시면 참여여취소 후 재신청해주세요',
               flags: 64,
             });
           }
